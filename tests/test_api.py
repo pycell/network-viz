@@ -32,6 +32,7 @@ def test_summary_with_configured_xml(monkeypatch) -> None:  # type: ignore[no-un
     assert response.status_code == 200
     assert response.json()["config_source"] == "pf_config.xml"
     assert response.json()["interfaces"] == 3
+    assert response.json()["flows"] > 0
     assert response.json()["findings"] > 0
     get_settings.cache_clear()
 
@@ -45,5 +46,6 @@ def test_policy_with_configured_xml(monkeypatch) -> None:  # type: ignore[no-unt
 
     assert response.status_code == 200
     assert response.json()["source"]["name"] == "pf_config.xml"
+    assert response.json()["flows"]
     assert response.json()["findings"]
     get_settings.cache_clear()

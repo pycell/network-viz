@@ -78,7 +78,7 @@ h1 {
 .summary-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   margin-bottom: 16px;
 }
 
@@ -259,6 +259,38 @@ h1 {
   color: #0f5f73;
 }
 
+.verdict {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  justify-content: center;
+  line-height: 1;
+  padding: 6px 8px;
+  text-transform: uppercase;
+}
+
+.verdict-allowed {
+  background: #e7f7ef;
+  color: #17683b;
+}
+
+.verdict-denied {
+  background: #eef3f6;
+  color: #455762;
+}
+
+.verdict-unknown,
+.verdict-ambiguous {
+  background: #fff6db;
+  color: #7a5400;
+}
+
+.verdict-risky {
+  background: #fff0ec;
+  color: #9c3b22;
+}
+
 .detail-stack {
   display: grid;
   gap: 16px;
@@ -322,6 +354,47 @@ th {
 
 td {
   color: #26343d;
+}
+
+.flow-row {
+  cursor: pointer;
+}
+
+.flow-row:hover,
+.flow-row.selected {
+  background: #f3f9fb;
+}
+
+.explanation-steps {
+  counter-reset: step;
+  display: grid;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.explanation-steps li {
+  border-top: 1px solid #e1e7eb;
+  display: grid;
+  gap: 5px;
+  padding-top: 10px;
+}
+
+.explanation-steps strong {
+  color: #1f2a31;
+}
+
+.explanation-steps span {
+  color: #34444f;
+  line-height: 1.5;
+}
+
+.explanation-steps code {
+  color: #52626d;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 900px) {

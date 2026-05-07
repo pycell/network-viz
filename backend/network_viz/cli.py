@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 from network_viz import __version__
+from network_viz.analysis.flow_engine import analyze_flows
 from network_viz.analysis.risk_rules import analyze_risks
 from network_viz.collectors.pfsense_xml import parse_pfsense_xml
 
@@ -39,7 +40,7 @@ def main() -> None:
     if args.command == "analyze-pfsense":
         if args.input_path is None:
             parser.error("analyze-pfsense requires an input XML file")
-        config = analyze_risks(parse_pfsense_xml(args.input_path))
+        config = analyze_flows(analyze_risks(parse_pfsense_xml(args.input_path)))
         print(json.dumps(config.model_dump(mode="json"), indent=2))
         return
 
