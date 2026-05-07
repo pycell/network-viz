@@ -7,7 +7,7 @@ FRONTEND_DIR := frontend
 COMPOSE ?= docker compose
 XML ?= tests/pf_config.xml
 
-.PHONY: help install install-backend install-frontend dev-backend dev-backend-reload dev-frontend parse-pfsense analyze-pfsense test lint format typecheck docker-build docker-up docker-down docker-logs db-shell clean
+.PHONY: help install install-backend install-frontend dev-backend dev-backend-reload dev-backend-pfsense dev-frontend parse-pfsense analyze-pfsense test lint format typecheck docker-build docker-up docker-down docker-logs db-shell clean
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_-]+:.*##/ {printf "%-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -25,6 +25,10 @@ dev-backend: ## Run FastAPI backend locally
 
 dev-backend-reload: ## Run FastAPI backend locally with reload
 	$(PYTHON) uvicorn network_viz.api.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir backend
+
+dev-backend-pfsense: ## Run backend with local pfSense XML loaded. Usage: make dev-backend-pfsense XML=tests/pf_config.xml
+	@test -n "$(XML)" || (echo "Usage: make dev-backend-pfsense XML=tests/pf_config.xml" && exit 2)
+	NETWORK_VIZ_PFSENSE_XML_PATH=$(XML) $(PYTHON) uvicorn network_viz.api.main:app --host 127.0.0.1 --port 8000 --reload --reload-dir backend
 
 dev-frontend: ## Run React frontend locally
 	cd $(FRONTEND_DIR) && npm run dev

@@ -32,6 +32,7 @@ body {
 
 h1,
 h2,
+h3,
 p {
   margin: 0;
 }
@@ -77,7 +78,7 @@ h1 {
 .summary-grid {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   margin-bottom: 16px;
 }
 
@@ -116,9 +117,10 @@ h1 {
 .metric-card strong {
   color: #11181c;
   display: block;
-  font-size: 26px;
+  font-size: clamp(18px, 2vw, 26px);
   line-height: 1.1;
   margin-top: 4px;
+  overflow-wrap: anywhere;
 }
 
 .workspace-grid {
@@ -189,6 +191,115 @@ h1 {
   display: flex;
   min-height: 160px;
   padding: 20px;
+}
+
+.finding-list {
+  display: grid;
+  gap: 8px;
+  max-height: 430px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.finding-row {
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid #dbe2e6;
+  border-radius: 8px;
+  color: #1f2a31;
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 10px;
+  grid-template-columns: 84px minmax(0, 1fr);
+  min-height: 48px;
+  padding: 10px;
+  text-align: left;
+}
+
+.finding-row:hover,
+.finding-row.selected {
+  border-color: #7cb6c4;
+  background: #f3f9fb;
+}
+
+.severity {
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  justify-content: center;
+  line-height: 1;
+  padding: 6px 8px;
+  text-transform: uppercase;
+}
+
+.severity-critical {
+  background: #ffe9e9;
+  color: #9d1b1b;
+}
+
+.severity-high {
+  background: #fff0ec;
+  color: #9c3b22;
+}
+
+.severity-medium {
+  background: #fff6db;
+  color: #7a5400;
+}
+
+.severity-low {
+  background: #eef3f6;
+  color: #455762;
+}
+
+.severity-info {
+  background: #e8f3f7;
+  color: #0f5f73;
+}
+
+.detail-stack {
+  display: grid;
+  gap: 16px;
+}
+
+.detail-stack h3 {
+  color: #11181c;
+  font-size: 20px;
+  line-height: 1.25;
+  margin-top: 10px;
+}
+
+.detail-stack p {
+  color: #34444f;
+  line-height: 1.55;
+}
+
+.detail-stack dl {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+}
+
+.detail-stack dl div {
+  border-top: 1px solid #e1e7eb;
+  display: grid;
+  gap: 4px;
+  padding-top: 10px;
+}
+
+.detail-stack dt {
+  color: #63717b;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.detail-stack dd {
+  color: #26343d;
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 
 table {
