@@ -5,8 +5,9 @@ UV ?= UV_CACHE_DIR=$(UV_CACHE_DIR) python3 -m uv
 PYTHON ?= $(UV) run
 FRONTEND_DIR := frontend
 COMPOSE ?= docker compose
+XML ?= /Users/guyr/PycharmProjects/network-viz/tests/pf_config.xml
 
-.PHONY: help install install-backend install-frontend dev-backend dev-backend-reload dev-frontend test lint format typecheck docker-build docker-up docker-down docker-logs db-shell clean
+.PHONY: help install install-backend install-frontend dev-backend dev-backend-reload dev-frontend parse-pfsense test lint format typecheck docker-build docker-up docker-down docker-logs db-shell clean
 
 help: ## Show available commands
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_-]+:.*##/ {printf "%-18s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
@@ -27,6 +28,10 @@ dev-backend-reload: ## Run FastAPI backend locally with reload
 
 dev-frontend: ## Run React frontend locally
 	cd $(FRONTEND_DIR) && npm run dev
+
+parse-pfsense: ## Parse pfSense XML. Usage: make parse-pfsense XML=tests/pf_config.xml
+	@test -n "$(XML)" || (echo "Usage: make parse-pfsense XML=/Users/guyr/PycharmProjects/network-viz/tests/pf_config.xml" && exit 2)
+	$(PYTHON) network-viz parse-pfsense $(XML)
 
 test: ## Run backend tests
 	$(PYTHON) pytest

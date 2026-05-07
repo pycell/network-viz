@@ -1,7 +1,9 @@
 import argparse
 import json
+from pathlib import Path
 
 from network_viz import __version__
+from network_viz.collectors.pfsense_xml import parse_pfsense_xml
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -10,10 +12,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["summary"],
+        choices=["summary", "parse-pfsense"],
         default="summary",
         help="Command to run",
     )
+    parser.add_argument("input_path", nargs="?", type=Path, help="Input configuration file")
     return parser
 
 
@@ -23,6 +26,13 @@ def main() -> None:
 
     if args.version:
         print(__version__)
+        return
+
+    if args.command == "parse-pfsense":
+        if args.input_path is None:
+            parser.error("parse-pfsense requires an input XML file")
+        config = parse_pfsense_xml(args.input_path)
+        print(json.dumps(config.model_dump(mode="json"), indent=2))
         return
 
     print(
