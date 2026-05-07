@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 
 from network_viz import __version__
+from network_viz.analysis.risk_rules import analyze_risks
 from network_viz.collectors.pfsense_xml import parse_pfsense_xml
 
 
@@ -12,7 +13,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "command",
         nargs="?",
-        choices=["summary", "parse-pfsense"],
+        choices=["summary", "parse-pfsense", "analyze-pfsense"],
         default="summary",
         help="Command to run",
     )
@@ -32,6 +33,13 @@ def main() -> None:
         if args.input_path is None:
             parser.error("parse-pfsense requires an input XML file")
         config = parse_pfsense_xml(args.input_path)
+        print(json.dumps(config.model_dump(mode="json"), indent=2))
+        return
+
+    if args.command == "analyze-pfsense":
+        if args.input_path is None:
+            parser.error("analyze-pfsense requires an input XML file")
+        config = analyze_risks(parse_pfsense_xml(args.input_path))
         print(json.dumps(config.model_dump(mode="json"), indent=2))
         return
 
