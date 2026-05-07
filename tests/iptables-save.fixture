@@ -1,0 +1,31 @@
+*raw
+:PREROUTING ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+COMMIT
+*mangle
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+COMMIT
+*nat
+:PREROUTING ACCEPT [0:0]
+:INPUT ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+:POSTROUTING ACCEPT [0:0]
+-A PREROUTING -i eth0 -p tcp -d 203.0.113.10 --dport 8443 -m comment --comment "public admin" -j DNAT --to-destination 10.0.0.10:443
+-A POSTROUTING -o eth0 -s 10.0.0.0/24 -j MASQUERADE
+-A POSTROUTING -o eth0 -s 10.0.1.0/24 -j SNAT --to-source 203.0.113.20
+-A PREROUTING -i eth0 -p tcp --dport 8080 -j REDIRECT --to-ports 80
+COMMIT
+*filter
+:INPUT DROP [0:0]
+:FORWARD DROP [0:0]
+:OUTPUT ACCEPT [0:0]
+-A INPUT -i lo -j ACCEPT
+-A INPUT -i eth0 -p tcp --dport 22 -s 198.51.100.7/32 -m comment --comment "trusted ssh" -j ACCEPT
+-A INPUT -i eth0 -p tcp --dport 23 -j REJECT
+-A FORWARD -i eth0 -o eth1 -p tcp -d 10.0.0.10 --dport 443 -j ACCEPT
+-A FORWARD -i eth1 -o eth0 -s 10.0.0.0/24 -j ACCEPT
+COMMIT

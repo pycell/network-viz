@@ -3,13 +3,35 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
 
 from network_viz import __version__
 from network_viz.analysis.flow_engine import analyze_flows
 from network_viz.analysis.risk_rules import analyze_risks
-from network_viz.collectors.pfsense_xml import parse_pfsense_xml
+from network_viz.collectors.iptables import parse_iptables_bundle_text
+from network_viz.collectors.pfsense_xml import parse_pfsense_xml, parse_pfsense_xml_text
 from network_viz.config import get_settings
 from network_viz.normalizer.model import NormalizedConfig
+
+
+class PfsenseXmlUpload(BaseModel):
+    filename: str = "uploaded-pfsense.xml"
+    content: str
+
+
+class IptablesUpload(BaseModel):
+    filename: str = "uploaded-iptables-save"
+    iptables_save: str
+    ip_route: str | None = None
+    ip_rule: str | None = None
+    ip_addr: str | None = None
+
+
+class CredentialedSourceRequest(BaseModel):
+    host: str
+    username: str
+    password: str | None = None
+    api_token: str | None = None
 
 
 def create_app() -> FastAPI:
@@ -67,6 +89,56 @@ def create_app() -> FastAPI:
                 "message": "Set NETWORK_VIZ_PFSENSE_XML_PATH to load a local pfSense XML export.",
             }
         return config.model_dump(mode="json")
+
+    @app.post("/api/v1/policy/pfsense/xml")
+    async def upload_pfsense_xml(payload: PfsenseXmlUpload) -> dict[str, object]:
+        try:
+            config = analyze_flows(
+                analyze_risks(parse_pfsense_xml_text(payload.content, payload.filename))
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unable to parse pfSense XML: {exc}",
+            ) from exc
+        return config.model_dump(mode="json")
+
+    @app.post("/api/v1/policy/iptables/local")
+    async def upload_iptables_local(payload: IptablesUpload) -> dict[str, object]:
+        try:
+            config = parse_iptables_bundle_text(
+                payload.iptables_save,
+                name=payload.filename,
+                route_content=payload.ip_route,
+                rule_content=payload.ip_rule,
+                interface_content=payload.ip_addr,
+            )
+        except Exception as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Unable to parse iptables input: {exc}",
+            ) from exc
+        return config.model_dump(mode="json")
+
+    @app.post("/api/v1/policy/pfsense/api")
+    async def pfsense_api_source(_payload: CredentialedSourceRequest) -> dict[str, object]:
+        raise HTTPException(
+            status_code=501,
+            detail=(
+                "pfSense API collection is a planned credentialed collector. "
+                "Use pfSense XML upload until the read-only API client is implemented."
+            ),
+        )
+
+    @app.post("/api/v1/policy/iptables/ssh")
+    async def iptables_ssh_source(_payload: CredentialedSourceRequest) -> dict[str, object]:
+        raise HTTPException(
+            status_code=501,
+            detail=(
+                "Remote SSH collection is a planned credentialed collector. "
+                "Upload local command outputs from a VPS until SSH collection is implemented."
+            ),
+        )
 
     static_dir = Path(__file__).resolve().parents[3] / "frontend" / "dist"
     if static_dir.exists():

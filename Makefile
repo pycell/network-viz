@@ -6,6 +6,10 @@ PYTHON ?= $(UV) run
 FRONTEND_DIR := frontend
 COMPOSE ?= docker compose
 XML ?= tests/pf_config.xml
+IPTABLES ?= tests/iptables-save.fixture
+IP_ROUTE ?= tests/ip-route.fixture
+IP_RULE ?= tests/ip-rule.fixture
+IP_ADDR ?= tests/ip-addr.fixture
 
 .PHONY: help install install-backend install-frontend dev-backend dev-backend-reload dev-backend-pfsense dev-frontend parse-pfsense analyze-pfsense test lint format typecheck docker-build docker-up docker-down docker-logs db-shell clean
 
@@ -40,6 +44,10 @@ parse-pfsense: ## Parse pfSense XML. Usage: make parse-pfsense XML=tests/pf_conf
 analyze-pfsense: ## Parse pfSense XML and generate risk findings. Usage: make analyze-pfsense XML=tests/pf_config.xml
 	@test -n "$(XML)" || (echo "Usage: make analyze-pfsense XML=tests/pf_config.xml" && exit 2)
 	$(PYTHON) network-viz analyze-pfsense $(XML)
+
+parse-iptables: ## Parse iptables-save with optional Linux route/rule/address inventory
+	@test -n "$(IPTABLES)" || (echo "Usage: make parse-iptables IPTABLES=tests/iptables-save.fixture" && exit 2)
+	$(PYTHON) network-viz parse-iptables $(IPTABLES) --ip-route $(IP_ROUTE) --ip-rule $(IP_RULE) --ip-addr $(IP_ADDR)
 
 test: ## Run backend tests
 	$(PYTHON) pytest

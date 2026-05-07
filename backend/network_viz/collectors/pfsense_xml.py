@@ -22,9 +22,17 @@ from network_viz.normalizer.model import (
 def parse_pfsense_xml(path: str | Path) -> NormalizedConfig:
     config_path = Path(path)
     root = ElementTree.parse(config_path).getroot()
+    return _parse_pfsense_root(root, config_path.name)
 
+
+def parse_pfsense_xml_text(content: str, name: str = "uploaded-pfsense.xml") -> NormalizedConfig:
+    root = ElementTree.fromstring(content)
+    return _parse_pfsense_root(root, name)
+
+
+def _parse_pfsense_root(root: Element, name: str) -> NormalizedConfig:
     return NormalizedConfig(
-        source=ConfigSource(backend=SourceBackend.PFSENSE_XML, name=config_path.name),
+        source=ConfigSource(backend=SourceBackend.PFSENSE_XML, name=name),
         interfaces=_parse_interfaces(root),
         aliases=_parse_aliases(root),
         routes=_parse_routes(root),

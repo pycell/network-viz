@@ -49,3 +49,56 @@ def test_policy_with_configured_xml(monkeypatch) -> None:  # type: ignore[no-unt
     assert response.json()["flows"]
     assert response.json()["findings"]
     get_settings.cache_clear()
+
+
+def test_upload_pfsense_xml_policy() -> None:
+    get_settings.cache_clear()
+    client = TestClient(create_app())
+
+    response = client.post(
+        "/api/v1/policy/pfsense/xml",
+        json={
+            "filename": "manual.xml",
+            "content": open("tests/pf_config.xml").read(),
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["source"]["name"] == "manual.xml"
+    assert response.json()["findings"]
+    assert response.json()["flows"]
+
+
+def test_upload_iptables_local_policy() -> None:
+    get_settings.cache_clear()
+    client = TestClient(create_app())
+
+    response = client.post(
+        "/api/v1/policy/iptables/local",
+        json={
+            "filename": "iptables-save.fixture",
+            "iptables_save": open("tests/iptables-save.fixture").read(),
+            "ip_route": open("tests/ip-route.fixture").read(),
+            "ip_rule": open("tests/ip-rule.fixture").read(),
+            "ip_addr": open("tests/ip-addr.fixture").read(),
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["source"]["backend"] == "iptables"
+    assert response.json()["firewall_rules"]
+    assert response.json()["nat_rules"]
+    assert response.json()["routes"]
+    assert response.json()["interfaces"]
+
+
+def test_credentialed_collectors_are_explicitly_not_implemented() -> None:
+    get_settings.cache_clear()
+    client = TestClient(create_app())
+
+    response = client.post(
+        "/api/v1/policy/iptables/ssh",
+        json={"host": "203.0.113.10", "username": "root", "password": "secret"},
+    )
+
+    assert response.status_code == 501

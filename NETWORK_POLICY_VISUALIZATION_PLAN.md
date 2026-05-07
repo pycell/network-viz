@@ -317,6 +317,31 @@ Acceptance criteria:
 - ACCEPT/DROP/REJECT rules normalize into `FirewallRule`.
 - Default chain policy is represented.
 
+### Sprint 5A: Usability and Source Selection Adjustments
+
+Goal: Improve operator workflow before continuing deeper iptables analysis.
+
+Adjustments:
+
+- Use the project favicon in the frontend shell.
+- Add source selection for:
+  - pfSense XML with manual browser upload.
+  - pfSense API with host and credential inputs, kept as an explicit upcoming collector path.
+  - iptables local files with manual upload of `iptables-save`, `ip route`, `ip rule`, and `ip addr`.
+  - iptables remote SSH with host and credential inputs, kept as an explicit upcoming collector path.
+- Re-examine the Major Flow Map and make it communicate actual flow verdict distribution instead of a vague topology cartoon.
+- Improve page scrolling discoverability and reduce confusion when panels contain overflow.
+- Add a plain-language rule story to the Explanation Detail panel so non-specialists can understand what a selected flow or finding means.
+
+Acceptance criteria:
+
+- User can choose a source type from the dashboard.
+- User can upload a pfSense XML file and immediately see normalized policy, findings, flows, and explanations.
+- User can upload local iptables command outputs and see normalized rules, NAT, routes, and interfaces.
+- Credential-based source modes are visible but clearly marked as not connected until dedicated collectors are implemented.
+- Explanation Detail includes a simple human-readable summary below technical steps.
+- Major Flow Map either conveys useful aggregate flow information or is flagged for removal in a later design pass.
+
 ### Sprint 6: iptables Risk and Explanation
 
 Goal: Analyze Linux firewall behavior and explain common forwarding/NAT paths.

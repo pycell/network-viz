@@ -5,6 +5,7 @@ from pathlib import Path
 from network_viz import __version__
 from network_viz.analysis.flow_engine import analyze_flows
 from network_viz.analysis.risk_rules import analyze_risks
+from network_viz.collectors.iptables import parse_iptables_bundle
 from network_viz.collectors.pfsense_xml import parse_pfsense_xml
 
 
@@ -12,9 +13,16 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="network-viz")
     parser.add_argument("--version", action="store_true", help="Print version and exit")
     parser.add_argument(
+        "--ip-route",
+        type=Path,
+        help="Optional ip route output for iptables parsing",
+    )
+    parser.add_argument("--ip-rule", type=Path, help="Optional ip rule output for iptables parsing")
+    parser.add_argument("--ip-addr", type=Path, help="Optional ip addr output for iptables parsing")
+    parser.add_argument(
         "command",
         nargs="?",
-        choices=["summary", "parse-pfsense", "analyze-pfsense"],
+        choices=["summary", "parse-pfsense", "analyze-pfsense", "parse-iptables"],
         default="summary",
         help="Command to run",
     )
@@ -41,6 +49,18 @@ def main() -> None:
         if args.input_path is None:
             parser.error("analyze-pfsense requires an input XML file")
         config = analyze_flows(analyze_risks(parse_pfsense_xml(args.input_path)))
+        print(json.dumps(config.model_dump(mode="json"), indent=2))
+        return
+
+    if args.command == "parse-iptables":
+        if args.input_path is None:
+            parser.error("parse-iptables requires an iptables-save file")
+        config = parse_iptables_bundle(
+            args.input_path,
+            route_path=args.ip_route,
+            rule_path=args.ip_rule,
+            interface_path=args.ip_addr,
+        )
         print(json.dumps(config.model_dump(mode="json"), indent=2))
         return
 
