@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 from network_viz.api.main import create_app
+from network_viz.collectors.iptables import parse_iptables_bundle_text
 from network_viz.config import get_settings
 
 
@@ -92,13 +93,54 @@ def test_upload_iptables_local_policy() -> None:
     assert response.json()["interfaces"]
 
 
-def test_credentialed_collectors_are_explicitly_not_implemented() -> None:
+def test_pfsense_api_collector_is_explicitly_not_implemented() -> None:
+    get_settings.cache_clear()
+    client = TestClient(create_app())
+
+    response = client.post(
+        "/api/v1/policy/pfsense/api",
+        json={"host": "192.168.64.2", "username": "admin", "api_token": "secret"},
+    )
+
+    assert response.status_code == 501
+
+
+def test_iptables_ssh_policy(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    def fake_collect(host: str, username: str, *, port: int = 22):  # type: ignore[no-untyped-def]
+        assert host == "192.168.64.2"
+        assert username == "root"
+        assert port == 22
+        return parse_iptables_bundle_text(
+            open("tests/iptables-save.fixture").read(),
+            name="root@192.168.64.2:iptables-save",
+            route_content=open("tests/ip-route.fixture").read(),
+            rule_content=open("tests/ip-rule.fixture").read(),
+            interface_content=open("tests/ip-addr.fixture").read(),
+        )
+
+    monkeypatch.setattr("network_viz.api.main.collect_iptables_over_ssh", fake_collect)
     get_settings.cache_clear()
     client = TestClient(create_app())
 
     response = client.post(
         "/api/v1/policy/iptables/ssh",
-        json={"host": "203.0.113.10", "username": "root", "password": "secret"},
+        json={"host": "192.168.64.2", "username": "root", "port": 22},
     )
 
-    assert response.status_code == 501
+    assert response.status_code == 200
+    assert response.json()["source"]["name"] == "root@192.168.64.2:iptables-save"
+    assert response.json()["firewall_rules"]
+    assert response.json()["nat_rules"]
+
+
+def test_iptables_ssh_rejects_password_auth() -> None:
+    get_settings.cache_clear()
+    client = TestClient(create_app())
+
+    response = client.post(
+        "/api/v1/policy/iptables/ssh",
+        json={"host": "192.168.64.2", "username": "root", "password": "secret"},
+    )
+
+    assert response.status_code == 400
+    assert "Password SSH is not supported" in response.json()["detail"]

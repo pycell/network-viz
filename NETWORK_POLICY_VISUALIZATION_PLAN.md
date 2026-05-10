@@ -342,6 +342,29 @@ Acceptance criteria:
 - Explanation Detail includes a simple human-readable summary below technical steps.
 - Major Flow Map either conveys useful aggregate flow information or is flagged for removal in a later design pass.
 
+### Sprint 5B: iptables SSH Collection
+
+Goal: Collect Linux firewall data from remote VPS hosts over SSH and feed it into the existing iptables parser.
+
+Approach:
+
+- Use the local OpenSSH client so collection follows the operator's existing Mac terminal setup.
+- Prefer SSH keys, ssh-agent, and `~/.ssh/config`; do not store credentials in the app.
+- Run the same remote commands documented in the local upload flow:
+  - `iptables-save`
+  - `ip route`
+  - `ip rule`
+  - `ip -o -4 addr show`
+- Parse collected stdout with the Sprint 5 iptables parser.
+- Return actionable errors when SSH, sudo, or remote commands fail.
+
+Acceptance criteria:
+
+- User can enter a host, username, and optional port in the iptables SSH source mode.
+- Backend connects over SSH and returns normalized firewall rules, NAT rules, routes, interfaces, and policy-routing metadata.
+- Failed SSH collection returns a clear HTTP error instead of `501 Not Implemented`.
+- Tests cover command execution, parse integration, and API error handling without requiring a live VPS.
+
 ### Sprint 6: iptables Risk and Explanation
 
 Goal: Analyze Linux firewall behavior and explain common forwarding/NAT paths.

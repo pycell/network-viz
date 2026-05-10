@@ -428,8 +428,6 @@ def _int_value_after(tokens: list[str], key: str) -> int | None:
 def _interface_name_from_addr_tokens(tokens: list[str]) -> str | None:
     if len(tokens) < 2:
         return None
-    if tokens[0].endswith(":"):
-        return tokens[-1]
     return tokens[1].rstrip(":")
 
 

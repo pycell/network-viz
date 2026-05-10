@@ -59,11 +59,41 @@ type Flow = {
   explanation: ExplanationStep[];
 };
 
+type PortSelector = {
+  protocol: string | null;
+  ports: string[];
+};
+
+type FirewallRule = {
+  id: string;
+  source: string;
+  destination: string;
+  service: PortSelector;
+  action: string;
+  order: number;
+  interface: string | null;
+  chain: string | null;
+  description: string | null;
+};
+
+type NatRule = {
+  id: string;
+  nat_type: string;
+  original_source: string | null;
+  original_destination: string | null;
+  translated_source: string | null;
+  translated_destination: string | null;
+  service: PortSelector;
+  order: number;
+  interface: string | null;
+  description: string | null;
+};
+
 type Policy = {
-  source: { backend: string; name: string } | null;
+  source: { backend: string; name: string; metadata?: Record<string, unknown> } | null;
   interfaces: unknown[];
-  firewall_rules: unknown[];
-  nat_rules: unknown[];
+  firewall_rules: FirewallRule[];
+  nat_rules: NatRule[];
   routes: unknown[];
   flows: Flow[];
   findings: Finding[];
@@ -171,8 +201,13 @@ export function App() {
       await postJson<Policy>(endpoint, {
         host: String(formData.get("host") ?? ""),
         username: String(formData.get("username") ?? ""),
+        port: Number(formData.get("port") || 22),
         password: String(formData.get("password") ?? ""),
         api_token: String(formData.get("api_token") ?? "")
+      }).then((nextPolicy) => {
+        if (sourceMode === "iptables-ssh") {
+          applyPolicy(nextPolicy, `Collected iptables from ${String(formData.get("host") ?? "")}.`);
+        }
       });
     });
   }
@@ -277,37 +312,61 @@ export function App() {
         ) : null}
 
         {sourceMode === "pfsense-api" || sourceMode === "iptables-ssh" ? (
-          <form className="source-form source-form-wide" onSubmit={handleCredentialedSubmit}>
-            <label>
-              Host
-              <input name="host" placeholder="192.0.2.10" type="text" />
-            </label>
-            <label>
-              User
-              <input name="username" placeholder="admin" type="text" />
-            </label>
-            {sourceMode === "pfsense-api" ? (
+          <>
+            {sourceMode === "iptables-ssh" ? (
+              <details className="source-help" open>
+                <summary>
+                  <Info size={16} />
+                  SSH collection behavior
+                </summary>
+                <div className="command-grid">
+                  <code>ssh root@192.168.64.2 iptables-save</code>
+                  <span>The app runs this through your local OpenSSH client.</span>
+                  <code>ssh root@192.168.64.2 ip route</code>
+                  <span>SSH keys, ssh-agent, and ~/.ssh/config are supported.</span>
+                  <code>ssh root@192.168.64.2 ip rule</code>
+                  <span>Password prompts are not supported in the web request path.</span>
+                  <code>ssh root@192.168.64.2 ip -o -4 addr show</code>
+                  <span>Use a user that can run iptables-save without an interactive sudo prompt.</span>
+                </div>
+              </details>
+            ) : null}
+            <form className="source-form source-form-wide" onSubmit={handleCredentialedSubmit}>
               <label>
-                API token
-                <input name="api_token" type="password" />
+                Host
+                <input name="host" placeholder="192.168.64.2" type="text" />
               </label>
-            ) : (
               <label>
-                Password
-                <input name="password" type="password" />
+                Port
+                <input name="port" placeholder="22" type="number" />
               </label>
-            )}
-            <button disabled={loadingSource} type="submit">
-              Check
-            </button>
-          </form>
+              <label>
+                User
+                <input name="username" placeholder={sourceMode === "iptables-ssh" ? "root" : "admin"} type="text" />
+              </label>
+              {sourceMode === "pfsense-api" ? (
+                <label>
+                  API token
+                  <input name="api_token" type="password" />
+                </label>
+              ) : null}
+              <button disabled={loadingSource} type="submit">
+                {sourceMode === "iptables-ssh" ? "Collect" : "Check"}
+              </button>
+            </form>
+          </>
         ) : null}
 
         <div className="source-status">{loadingSource ? "Loading source..." : sourceStatus}</div>
       </section>
 
       <section className="summary-grid" aria-label="Policy summary">
-        <Metric icon={<FileSearch size={20} />} label="Source" value={summary.config_source ?? "Not loaded"} />
+        <Metric
+          compactValue
+          icon={<FileSearch size={20} />}
+          label="Source"
+          value={summary.config_source ?? "Not loaded"}
+        />
         <Metric icon={<Network size={20} />} label="Interfaces" value={summary.interfaces} />
         <Metric icon={<ShieldCheck size={20} />} label="Firewall Rules" value={summary.firewall_rules} />
         <Metric icon={<Route size={20} />} label="NAT Rules" value={summary.nat_rules} />
@@ -325,6 +384,14 @@ export function App() {
                 setDetailMode("flow");
               }}
             />
+          ) : (
+            <div className="empty-state">{summary.message}</div>
+          )}
+        </Panel>
+
+        <Panel title="Policy Rules" hint="Firewall and NAT">
+          {policy.firewall_rules.length > 0 || policy.nat_rules.length > 0 ? (
+            <PolicyRules firewallRules={policy.firewall_rules} natRules={policy.nat_rules} />
           ) : (
             <div className="empty-state">{summary.message}</div>
           )}
@@ -404,6 +471,69 @@ export function App() {
         </Panel>
       </section>
     </main>
+  );
+}
+
+function PolicyRules(props: { firewallRules: FirewallRule[]; natRules: NatRule[] }) {
+  return (
+    <div className="rules-stack scroll-panel">
+      {props.firewallRules.length > 0 ? (
+        <div>
+          <h3>Firewall Rules</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Chain</th>
+                <th>Action</th>
+                <th>Source</th>
+                <th>Destination</th>
+                <th>Service</th>
+              </tr>
+            </thead>
+            <tbody>
+              {props.firewallRules.map((rule) => (
+                <tr key={rule.id}>
+                  <td>{rule.chain ?? rule.interface ?? "any"}</td>
+                  <td>
+                    <span className={`rule-action action-${rule.action}`}>{rule.action}</span>
+                  </td>
+                  <td>{rule.source}</td>
+                  <td>{rule.destination}</td>
+                  <td>{formatService(rule.service)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {props.natRules.length > 0 ? (
+        <div>
+          <h3>NAT Rules</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Source</th>
+                <th>Destination</th>
+                <th>Translation</th>
+                <th>Service</th>
+              </tr>
+            </thead>
+            <tbody>
+              {props.natRules.map((rule) => (
+                <tr key={rule.id}>
+                  <td>{rule.nat_type}</td>
+                  <td>{rule.original_source ?? "any"}</td>
+                  <td>{rule.original_destination ?? "any"}</td>
+                  <td>{rule.translated_destination ?? rule.translated_source ?? "none"}</td>
+                  <td>{formatService(rule.service)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -512,13 +642,18 @@ function RuleStory(props: { children: React.ReactNode }) {
   );
 }
 
-function Metric(props: { icon: React.ReactNode; label: string; value: number | string }) {
+function Metric(props: {
+  compactValue?: boolean;
+  icon: React.ReactNode;
+  label: string;
+  value: number | string;
+}) {
   return (
     <article className="metric-card">
       <div className="metric-icon">{props.icon}</div>
       <div>
         <span>{props.label}</span>
-        <strong>{props.value}</strong>
+        <strong className={props.compactValue ? "compact-value" : undefined}>{props.value}</strong>
       </div>
     </article>
   );
@@ -575,7 +710,7 @@ function formatService(service: Flow["service"]) {
 
 function summaryFromPolicy(policy: Policy, message: string): Summary {
   return {
-    config_source: policy.source?.name ?? null,
+    config_source: sourceDisplayName(policy),
     interfaces: policy.interfaces.length,
     firewall_rules: policy.firewall_rules.length,
     nat_rules: policy.nat_rules.length,
@@ -583,6 +718,19 @@ function summaryFromPolicy(policy: Policy, message: string): Summary {
     findings: policy.findings.length,
     message
   };
+}
+
+function sourceDisplayName(policy: Policy) {
+  if (!policy.source) {
+    return null;
+  }
+  if (policy.source.backend === "iptables" && policy.source.metadata?.collector === "ssh") {
+    return "iptables via SSH";
+  }
+  if (policy.source.backend === "iptables") {
+    return "iptables local";
+  }
+  return policy.source.name;
 }
 
 function fileFromForm(form: HTMLFormElement, name: string) {

@@ -2,6 +2,7 @@ from pathlib import Path
 
 from network_viz.collectors.iptables import (
     parse_ip_addr,
+    parse_ip_addr_text,
     parse_ip_route,
     parse_ip_rule,
     parse_iptables_bundle,
@@ -81,6 +82,17 @@ def test_parse_ip_addr_preserves_interface_inventory() -> None:
     assert eth0.addresses == ["203.0.113.10/24"]
     assert eth0.interface_type == "linux"
     assert eth1.addresses == ["10.0.0.1/24"]
+
+
+def test_parse_ip_addr_preserves_interface_names_from_one_line_output() -> None:
+    interfaces = parse_ip_addr_text(
+        "1: lo    inet 127.0.0.1/8 scope host lo\\       valid_lft forever preferred_lft forever\n"
+        "2: enp0s1    inet 192.168.64.2/24 metric 1024 brd 192.168.64.255 "
+        "scope global dynamic enp0s1\\       valid_lft 2258sec preferred_lft 2258sec\n"
+    )
+
+    assert [interface.name for interface in interfaces] == ["lo", "enp0s1"]
+    assert interfaces[1].addresses == ["192.168.64.2/24"]
 
 
 def test_parse_ip_rule_preserves_policy_routing_lines() -> None:

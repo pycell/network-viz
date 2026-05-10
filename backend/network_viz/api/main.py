@@ -9,6 +9,10 @@ from network_viz import __version__
 from network_viz.analysis.flow_engine import analyze_flows
 from network_viz.analysis.risk_rules import analyze_risks
 from network_viz.collectors.iptables import parse_iptables_bundle_text
+from network_viz.collectors.iptables_ssh import (
+    IptablesSshCollectionError,
+    collect_iptables_over_ssh,
+)
 from network_viz.collectors.pfsense_xml import parse_pfsense_xml, parse_pfsense_xml_text
 from network_viz.config import get_settings
 from network_viz.normalizer.model import NormalizedConfig
@@ -30,6 +34,7 @@ class IptablesUpload(BaseModel):
 class CredentialedSourceRequest(BaseModel):
     host: str
     username: str
+    port: int = 22
     password: str | None = None
     api_token: str | None = None
 
@@ -131,14 +136,24 @@ def create_app() -> FastAPI:
         )
 
     @app.post("/api/v1/policy/iptables/ssh")
-    async def iptables_ssh_source(_payload: CredentialedSourceRequest) -> dict[str, object]:
-        raise HTTPException(
-            status_code=501,
-            detail=(
-                "Remote SSH collection is a planned credentialed collector. "
-                "Upload local command outputs from a VPS until SSH collection is implemented."
-            ),
-        )
+    async def iptables_ssh_source(payload: CredentialedSourceRequest) -> dict[str, object]:
+        if payload.password:
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Password SSH is not supported yet. Use SSH keys, ssh-agent, or ~/.ssh/config "
+                    "so the local ssh command can connect without an interactive password."
+                ),
+            )
+        try:
+            config = collect_iptables_over_ssh(
+                payload.host,
+                payload.username,
+                port=payload.port,
+            )
+        except IptablesSshCollectionError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+        return config.model_dump(mode="json")
 
     static_dir = Path(__file__).resolve().parents[3] / "frontend" / "dist"
     if static_dir.exists():
